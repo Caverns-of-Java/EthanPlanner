@@ -91,6 +91,50 @@ body {
   margin-bottom: 1rem;
 }
 
+.topbar-copy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.app-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.8rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  border: 1px solid transparent;
+}
+
+.app-status[data-state="loading"] {
+  background: #fff4d6;
+  border-color: #f6d98b;
+  color: #8a5a00;
+}
+
+.app-status[data-state="ready"] {
+  background: #e8f5e9;
+  border-color: #bde5bf;
+  color: #14532d;
+}
+
+.app-status[data-state="error"] {
+  background: #fde8e8;
+  border-color: #f7b4b4;
+  color: #991b1b;
+}
+
 h1 {
   margin: 0;
 }
@@ -174,6 +218,10 @@ h1 {
 }
 
 .calendar-grid {
+  touch-action: pan-y pinch-zoom;
+}
+
+.calendar-grid.is-draw-mode {
   touch-action: none;
 }
 
@@ -207,6 +255,7 @@ h1 {
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .calendar-cell:hover {
@@ -260,6 +309,40 @@ h1 {
   gap: 0.4rem;
   color: var(--ink-600);
   font-size: 0.75rem;
+}
+
+.calendar-cell-edit-trigger {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.45rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(31, 41, 55, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink-900);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 140ms ease, transform 140ms ease, background-color 140ms ease;
+  z-index: 1;
+}
+
+.calendar-cell-edit-trigger:hover {
+  background: white;
+  transform: translateY(-1px);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .calendar-cell-edit-trigger {
+    display: inline-flex;
+  }
+
+  .calendar-cell:hover .calendar-cell-edit-trigger,
+  .calendar-cell:focus-within .calendar-cell-edit-trigger {
+    opacity: 1;
+  }
 }
 
 .chip-list,
@@ -326,6 +409,47 @@ select:focus,
   border: none;
   border-radius: 14px;
   padding: 1rem;
+}
+
+.auth-dialog {
+  width: min(360px, calc(100vw - 2rem));
+  border: none;
+  border-radius: 18px;
+  padding: 1.2rem;
+}
+
+.auth-dialog::backdrop {
+  background: rgba(22, 25, 30, 0.52);
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.auth-eyebrow {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--focus);
+}
+
+.auth-form h2 {
+  margin: 0;
+}
+
+.auth-copy {
+  margin: 0;
+  color: var(--ink-600);
+}
+
+.auth-error {
+  min-height: 1.1rem;
+  margin: 0;
+  color: #b42318;
+  font-size: 0.88rem;
 }
 
 .panel-dialog::backdrop {
@@ -505,6 +629,10 @@ select:focus,
     flex-direction: column;
     align-items: flex-start;
     gap: 0.8rem;
+  }
+
+  .title-row {
+    align-items: flex-start;
   }
 
   .calendar-cell {

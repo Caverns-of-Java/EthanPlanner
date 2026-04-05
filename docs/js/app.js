@@ -31,8 +31,15 @@ function buildUrl(path, query = {}) {
 }
 
 async function request(path, { method = "GET", query = {}, body } = {}) {
-  const url = buildUrl(path, query);
+  const safeQuery = method === "GET"
+    ? { ...query, _ts: Date.now() }
+    : query;
+  const url = buildUrl(path, safeQuery);
   const options = { method };
+
+  if (method === "GET") {
+    options.cache = "no-store";
+  }
 
   const safeBody = body ? { ...body } : body;
   if (safeBody && safeBody.type === "colour") {

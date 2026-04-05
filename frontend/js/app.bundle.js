@@ -1,5 +1,20 @@
 const API_BASE_URL = "https://script.google.com/macros/s/AKfycbyhSTtNEPFCqcTvKzOjaZ5zBLocSMwjGTaz4EQsJIxj3k_sKKgt7Da_eBXAkMzPYf6Slw/exec";
 const DEFAULT_COLOUR = "#e75480";
+const AUTH_STORAGE_KEY = "ethanplanner-auth-v1";
+const AUTH_TTL_MS = 12 * 60 * 60 * 1000;
+const AUTH_HASH_PARTS = [
+  "fc54",
+  "4a8348",
+  "f239f3",
+  "a69e14",
+  "85938d",
+  "acc63a",
+  "3d3ec5",
+  "5e0d04",
+  "05f06e",
+  "8c9973",
+  "21eb47",
+];
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -31,8 +46,15 @@ function buildUrl(path, query = {}) {
 }
 
 async function request(path, { method = "GET", query = {}, body } = {}) {
-  const url = buildUrl(path, query);
+  const safeQuery = method === "GET"
+    ? { ...query, _ts: Date.now() }
+    : query;
+  const url = buildUrl(path, safeQuery);
   const options = { method };
+
+  if (method === "GET") {
+    options.cache = "no-store";
+  }
 
   const safeBody = body ? { ...body } : body;
   if (safeBody && safeBody.type === "colour") {
@@ -191,10 +213,12 @@ function renderMonthGrid({
   gridElement.innerHTML = "";
 
   days.forEach((dayInfo) => {
-    const cell = document.createElement("button");
-    cell.type = "button";
+    const cell = document.createElement("div");
     cell.className = `calendar-cell${dayInfo.inMonth ? "" : " outside-month"}`;
     cell.dataset.date = dayInfo.isoDate;
+    cell.tabIndex = 0;
+    cell.setAttribute("role", "button");
+    cell.setAttribute("aria-label", `Open ${dayInfo.isoDate}`);
 
     const chips = document.createElement("div");
     chips.className = "cell-chips";
@@ -252,7 +276,19 @@ function renderMonthGrid({
       meta.textContent = "Journal";
     }
 
-    cell.append(number, chips, taskPreview, meta);
+    const editTrigger = document.createElement("button");
+    editTrigger.type = "button";
+    editTrigger.className = "calendar-cell-edit-trigger";
+    editTrigger.setAttribute("aria-label", `Open ${dayInfo.isoDate}`);
+    editTrigger.title = "Open date";
+    editTrigger.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001"/></svg>';
+    editTrigger.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setDebugStatus("Opening panel: " + dayInfo.isoDate);
+      void openDatePanel(dayInfo.isoDate);
+    });
+
+    cell.append(number, chips, taskPreview, meta, editTrigger);
     gridElement.append(cell);
   });
 }
@@ -264,6 +300,7 @@ let state = {
   selectedDate: formatISODate(new Date()),
   indicatorsByDate: new Map(),
   entriesByDate: new Map(),
+  colourOpVersionByDate: new Map(),
   legend: [],
   selectedColour: DEFAULT_COLOUR,
   highlightMode: "edit",
@@ -279,10 +316,35 @@ let state = {
 
 function setDebugStatus(text) {
   const el = document.getElementById("debugStatus");
+  const value = String(text || "");
+  const lowerValue = value.toLowerCase();
+
+  const isError = lowerValue.includes("error") || lowerValue.includes("failed") || lowerValue.includes("timeout");
+  const isReady = lowerValue.includes("ready");
+  const isLifecycleLoading =
+    lowerValue.includes("initializ")
+    || lowerValue.includes("loading")
+    || lowerValue.includes("fetching")
+    || lowerValue.includes("rendering")
+    || lowerValue.includes("state initialized")
+    || lowerValue.includes("events bound")
+    || lowerValue.includes("weekdays rendered");
+
+  const currentState = el?.dataset?.state || "loading";
+  const stateName = isError
+    ? "error"
+    : isReady
+      ? "ready"
+      : isLifecycleLoading
+        ? "loading"
+        : currentState;
+
   if (el) {
-    el.textContent = text;
+    el.dataset.state = stateName;
+    el.textContent = stateName === "ready" ? "Ready" : stateName === "error" ? "Error" : "Loading";
+    el.title = value;
   }
-  console.log("[EthanPlanner]", text);
+  console.log("[EthanPlanner]", value);
 }
 
 setDebugStatus("State initialized, running init...");
@@ -311,7 +373,95 @@ const els = {
   legendForm: document.getElementById("legendForm"),
   legendColour: document.getElementById("legendColour"),
   legendLabel: document.getElementById("legendLabel"),
+  authDialog: document.getElementById("authDialog"),
+  authForm: document.getElementById("authForm"),
+  authPasscode: document.getElementById("authPasscode"),
+  authError: document.getElementById("authError"),
 };
+
+function getExpectedAuthHash() {
+  return AUTH_HASH_PARTS.slice().reverse().join("");
+}
+
+function hasValidAuthSession() {
+  try {
+    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) {
+      return false;
+    }
+
+    const parsed = JSON.parse(raw);
+    return Number(parsed.unlockedAt) > Date.now() - AUTH_TTL_MS;
+  } catch (error) {
+    return false;
+  }
+}
+
+function rememberAuthSession() {
+  try {
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ unlockedAt: Date.now() }));
+  } catch (error) {
+    console.warn("Failed to persist auth session", error);
+  }
+}
+
+async function hashValue(value) {
+  if (!window.crypto?.subtle) {
+    throw new Error("Web Crypto unavailable");
+  }
+
+  const bytes = new TextEncoder().encode(value);
+  const digest = await window.crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (part) => part.toString(16).padStart(2, "0")).join("");
+}
+
+async function ensureAuthenticated() {
+  if (hasValidAuthSession()) {
+    return;
+  }
+
+  if (!els.authDialog || !els.authForm || !els.authPasscode || !els.authError) {
+    return;
+  }
+
+  els.authError.textContent = "";
+  els.authPasscode.value = "";
+  els.authDialog.addEventListener("cancel", (event) => event.preventDefault(), { once: true });
+  showDialog(els.authDialog);
+  els.authPasscode.focus();
+
+  await new Promise((resolve) => {
+    const handleSubmit = async (event) => {
+      event.preventDefault();
+      const value = els.authPasscode.value.trim();
+      if (!value) {
+        els.authError.textContent = "Enter the passcode.";
+        setDebugStatus("Authentication failed");
+        return;
+      }
+
+      try {
+        const hashedValue = await hashValue(value);
+        if (hashedValue !== getExpectedAuthHash()) {
+          els.authError.textContent = "Incorrect passcode.";
+          els.authPasscode.select();
+          setDebugStatus("Authentication failed");
+          return;
+        }
+
+        rememberAuthSession();
+        hideDialog(els.authDialog);
+        els.authForm.removeEventListener("submit", handleSubmit);
+        resolve();
+      } catch (error) {
+        els.authError.textContent = "Unable to verify passcode.";
+        setDebugStatus("Authentication error");
+      }
+    };
+
+    els.authForm.addEventListener("submit", handleSubmit);
+  });
+}
 
 function normaliseHex(colour) {
   return colour?.trim().toLowerCase();
@@ -530,6 +680,16 @@ function summariseEntries(entries) {
 function updateIndicatorForDate(date) {
   const entries = state.entriesByDate.get(date) || [];
   state.indicatorsByDate.set(date, summariseEntries(entries));
+}
+
+function getColourOpVersion(date) {
+  return state.colourOpVersionByDate.get(date) || 0;
+}
+
+function bumpColourOpVersion(date) {
+  const nextVersion = getColourOpVersion(date) + 1;
+  state.colourOpVersionByDate.set(date, nextVersion);
+  return nextVersion;
 }
 
 async function preloadVisibleEntries({ force = false } = {}) {
@@ -906,6 +1066,15 @@ function setHighlightMode(mode) {
     toolbar.dataset.mode = state.highlightMode;
   }
 
+  els.grid?.classList.toggle("is-draw-mode", state.highlightMode !== "edit");
+  state.suppressNextClick = false;
+  if (state.highlightMode === "edit") {
+    state.dragActive = false;
+    state.dragMoved = false;
+    state.dragTouchedDates.clear();
+    state.pointerDate = null;
+  }
+
   [
     { el: els.modeEdit, key: "edit" },
     { el: els.modeHighlight, key: "paint" },
@@ -924,6 +1093,7 @@ function setHighlightMode(mode) {
 async function eraseColourEntriesForDate(date, colour = state.selectedColour) {
   const entries = state.entriesByDate.get(date) || [];
   const targetColour = getSafeColour(colour);
+  bumpColourOpVersion(date);
   const removable = entries.filter(
     (entry) => entry.type === "colour" && getSafeColour(entry.colour) === targetColour
   );
@@ -967,6 +1137,7 @@ function queueHighlightAction(date) {
 
   if (state.highlightMode === "erase") {
     const targetColour = getSafeColour(state.selectedColour);
+    bumpColourOpVersion(date);
     const entries = state.entriesByDate.get(date) || [];
     const removable = entries.filter(
       (entry) => entry.type === "colour" && getSafeColour(entry.colour) === targetColour
@@ -1000,6 +1171,7 @@ function queueHighlightAction(date) {
     return;
   }
 
+  const opVersion = bumpColourOpVersion(date);
   const pendingId = `pending-${date}-${Date.now()}-${state.dragTouchedDates.size}`;
   appendEntryToState({
     id: pendingId,
@@ -1017,6 +1189,16 @@ function queueHighlightAction(date) {
         date,
         colour: getSafeColour(state.selectedColour),
       });
+
+      if (getColourOpVersion(date) !== opVersion) {
+        removeEntryFromState(pendingId, date);
+        const createdId = response?.data?.id;
+        if (createdId) {
+          await deleteEntry(createdId).catch(() => {});
+        }
+        return;
+      }
+
       removeEntryFromState(pendingId, date);
       appendEntryToState(response.data || {
         type: "colour",
@@ -1036,6 +1218,10 @@ function queueHighlightAction(date) {
 
 function setupDragHighlighting() {
   els.grid.addEventListener("pointerdown", (event) => {
+    if (state.highlightMode === "edit") {
+      return;
+    }
+
     console.log("[EthanPlanner] Pointer down");
     const cell = event.target.closest(".calendar-cell");
     if (!cell) {
@@ -1043,11 +1229,13 @@ function setupDragHighlighting() {
       return;
     }
 
+    event.preventDefault();
     console.log("[EthanPlanner] Drag start on", cell.dataset.date);
-  state.pointerDate = cell.dataset.date;
+    state.pointerDate = cell.dataset.date;
     state.dragActive = true;
     state.dragMoved = false;
-    state.dragTouchedDates = new Set();
+    state.dragTouchedDates = new Set([cell.dataset.date]);
+    queueHighlightAction(cell.dataset.date);
 
     if (typeof els.grid.setPointerCapture === "function") {
       try {
@@ -1083,19 +1271,8 @@ function setupDragHighlighting() {
     console.log("[EthanPlanner] Drag end. dragMoved:", state.dragMoved);
     const clickedDate = state.pointerDate;
 
-    if (state.dragMoved) {
+    if (state.dragMoved || clickedDate) {
       state.suppressNextClick = true;
-    } else if (clickedDate) {
-      state.suppressNextClick = true;
-      if (state.highlightMode === "erase") {
-        void eraseColourEntriesForDate(clickedDate);
-      } else if (state.highlightMode === "paint") {
-        queueHighlightAction(clickedDate);
-      } else {
-        setDebugStatus("Opening panel: " + clickedDate);
-        console.log("[EthanPlanner] Opening date panel from pointerup for", clickedDate);
-        void openDatePanel(clickedDate);
-      }
     }
 
     state.dragActive = false;
@@ -1173,6 +1350,24 @@ function bindEvents() {
     await openDatePanel(cell.dataset.date);
   });
 
+  els.grid.addEventListener("keydown", async (event) => {
+    if (event.key !== "Enter" && event.key !== " ") {
+      return;
+    }
+
+    if (state.highlightMode !== "edit") {
+      return;
+    }
+
+    const cell = event.target.closest(".calendar-cell");
+    if (!cell) {
+      return;
+    }
+
+    event.preventDefault();
+    await openDatePanel(cell.dataset.date);
+  });
+
   els.closeDateDialog.addEventListener("click", () => hideDialog(els.dateDialog));
   els.legendButton.addEventListener("click", () => openExclusiveDialog(els.legendDialog));
   els.closeLegendDialog.addEventListener("click", () => hideDialog(els.legendDialog));
@@ -1229,6 +1424,8 @@ async function initApp() {
   setDebugStatus("Initializing...");
   
   try {
+    setDebugStatus("Loading authentication...");
+    await ensureAuthenticated();
     renderWeekdays(els.weekdayRow);
     setDebugStatus("Weekdays rendered");
     bindEvents();

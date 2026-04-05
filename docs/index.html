@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/styles.css?v=20260405f" />
+  <link rel="stylesheet" href="css/styles.css?v=20260405g" />
 </head>
 <body>
   <aside id="installPrompt" class="install-prompt" hidden>
@@ -24,12 +24,34 @@
     </div>
   </aside>
 
+  <dialog id="authDialog" class="auth-dialog">
+    <form id="authForm" class="auth-form">
+      <p class="auth-eyebrow">EthanPlanner</p>
+      <h2>Enter passcode</h2>
+      <p class="auth-copy">This is a light passcode gate for casual access.</p>
+      <input
+        id="authPasscode"
+        name="passcode"
+        type="password"
+        inputmode="numeric"
+        autocomplete="off"
+        maxlength="12"
+        placeholder="Passcode"
+        required
+      />
+      <p id="authError" class="auth-error" role="alert" aria-live="polite"></p>
+      <button class="btn btn-primary" type="submit">Unlock</button>
+    </form>
+  </dialog>
+
   <div class="background-glow" aria-hidden="true"></div>
-  <div id="debugStatus" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.9); color: #0ff; padding: 1rem; font-family: monospace; font-size: 12px; z-index: 9999; pointer-events: none; max-width: 400px; word-break: break-all; border: 1px solid #0ff; border-radius: 4px;">Loading...</div>
   <main class="app-shell">
     <header class="topbar">
-      <div>
-        <h1>EthanPlanner</h1>
+      <div class="topbar-copy">
+        <div class="title-row">
+          <h1>EthanPlanner</h1>
+          <span id="debugStatus" class="app-status" data-state="loading" aria-live="polite">Loading</span>
+        </div>
         <p class="subtitle">Monthly planner with colour tags, tasks, and journal notes.</p>
       </div>
       <div class="topbar-actions">
@@ -128,26 +150,33 @@
   </dialog>
 
   <script>
-    window.debugLog = [];
     const debugStatus = document.getElementById("debugStatus");
+
+    function setBootStatus(state, detail) {
+      if (!debugStatus) {
+        return;
+      }
+
+      debugStatus.dataset.state = state;
+      debugStatus.textContent = state === "ready" ? "Ready" : state === "error" ? "Error" : "Loading";
+      debugStatus.title = detail || debugStatus.textContent;
+    }
 
     window.onerror = function(msg, url, line) {
       const text = "ERROR: " + msg + " @ " + url + ":" + line;
-      window.debugLog.push(text);
-      if (debugStatus) debugStatus.textContent = text;
+      setBootStatus("error", text);
       console.error(text);
     };
 
     window.addEventListener("error", function(event) {
       const text = "EVENT ERROR: " + event.message;
-      window.debugLog.push(text);
-      if (debugStatus) debugStatus.textContent = text;
+      setBootStatus("error", text);
       console.error(text);
     });
 
-    if (debugStatus) debugStatus.textContent = "App module loading...";
+    setBootStatus("loading", "App module loading...");
     console.log("Starting app.js import...");
   </script>
-  <script type="module" src="./js/app.bundle.js?v=20260405y"></script>
-  <script src="./js/pwa.js?v=20260405a" defer></script>
+  <script type="module" src="./js/app.bundle.js?v=20260405ac"></script>
+  <script src="./js/pwa.js?v=20260405b" defer></script>
 </html>

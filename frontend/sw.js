@@ -1,10 +1,10 @@
-const CACHE_NAME = "ethanplanner-v20260405a";
+const CACHE_NAME = "ethanplanner-v20260405e";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
-  "./css/styles.css?v=20260405f",
-  "./js/app.bundle.js?v=20260405y",
-  "./js/pwa.js?v=20260405a",
+  "./css/styles.css?v=20260405g",
+  "./js/app.bundle.js?v=20260405ac",
+  "./js/pwa.js?v=20260405b",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",
