@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EthanPlanner</title>
+  <meta name="theme-color" content="#e75480" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="EthanPlanner" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=20260405f" />
+</head>
+<body>
+  <aside id="installPrompt" class="install-prompt" hidden>
+    <p id="installPromptText">Install EthanPlanner for a faster app-like experience.</p>
+    <div class="install-prompt-actions">
+      <button id="installAppBtn" class="btn btn-primary" type="button">Install</button>
+      <button id="dismissInstallBtn" class="btn btn-ghost" type="button">Not now</button>
+    </div>
+  </aside>
+
+  <div class="background-glow" aria-hidden="true"></div>
+  <div id="debugStatus" style="position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.9); color: #0ff; padding: 1rem; font-family: monospace; font-size: 12px; z-index: 9999; pointer-events: none; max-width: 400px; word-break: break-all; border: 1px solid #0ff; border-radius: 4px;">Loading...</div>
+  <main class="app-shell">
+    <header class="topbar">
+      <div>
+        <h1>EthanPlanner</h1>
+        <p class="subtitle">Monthly planner with colour tags, tasks, and journal notes.</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="legendButton" class="btn btn-secondary" type="button">Edit Legend</button>
+      </div>
+    </header>
+
+    <section class="calendar-section" aria-label="Calendar">
+      <div class="calendar-toolbar">
+        <button id="prevMonth" class="btn btn-ghost" type="button">Previous</button>
+        <h2 id="monthLabel" aria-live="polite"></h2>
+        <button id="nextMonth" class="btn btn-ghost" type="button">Next</button>
+      </div>
+
+      <div class="highlight-toolbar" id="highlightToolbar" data-mode="edit">
+        <div class="mode-radio-group" role="group" aria-label="Interaction mode">
+          <button id="modeEdit" class="mode-btn is-active" type="button" aria-pressed="true" title="Edit">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-pen-fill" viewBox="0 0 16 16">
+              <path d="m13.498.795.149-.149a1.207 1.207 0 1 1 1.707 1.708l-.149.148a1.5 1.5 0 0 1-.059 2.059L4.854 14.854a.5.5 0 0 1-.233.131l-4 1a.5.5 0 0 1-.606-.606l1-4a.5.5 0 0 1 .131-.232l9.642-9.642a.5.5 0 0 0-.642.056L6.854 4.854a.5.5 0 1 1-.708-.708L9.44.854A1.5 1.5 0 0 1 11.5.796a1.5 1.5 0 0 1 1.998-.001"/>
+            </svg>
+          </button>
+          <button id="modeHighlight" class="mode-btn" type="button" aria-pressed="false" title="Highlight">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-highlighter" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M11.096.644a2 2 0 0 1 2.791.036l1.433 1.433a2 2 0 0 1 .035 2.791l-.413.435-8.07 8.995a.5.5 0 0 1-.372.166h-3a.5.5 0 0 1-.234-.058l-.412.412A.5.5 0 0 1 2.5 15h-2a.5.5 0 0 1-.354-.854l1.412-1.412A.5.5 0 0 1 1.5 12.5v-3a.5.5 0 0 1 .166-.372l8.995-8.07zm-.115 1.47L2.727 9.52l3.753 3.753 7.406-8.254zm3.585 2.17.064-.068a1 1 0 0 0-.017-1.396L13.18 1.387a1 1 0 0 0-1.396-.018l-.068.065zM5.293 13.5 2.5 10.707v1.586L3.707 13.5z"/>
+            </svg>
+          </button>
+          <button id="modeErase" class="mode-btn" type="button" aria-pressed="false" title="Erase">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-eraser" viewBox="0 0 16 16">
+              <path d="M8.086 2.207a2 2 0 0 1 2.828 0l3.879 3.879a2 2 0 0 1 0 2.828l-5.5 5.5A2 2 0 0 1 7.879 15H5.12a2 2 0 0 1-1.414-.586l-2.5-2.5a2 2 0 0 1 0-2.828zm2.121.707a1 1 0 0 0-1.414 0L4.16 7.547l5.293 5.293 4.633-4.633a1 1 0 0 0 0-1.414zM8.746 13.547 3.453 8.254 1.914 9.793a1 1 0 0 0 0 1.414l2.5 2.5a1 1 0 0 0 .707.293H7.88a1 1 0 0 0 .707-.293z"/>
+            </svg>
+          </button>
+        </div>
+        <label for="quickColour" class="colour-selector-label">Colour:</label>
+        <select id="quickColour" aria-label="Highlight colour"></select>
+      </div>
+
+      <div class="weekday-row" id="weekdayRow"></div>
+      <div class="calendar-grid" id="calendarGrid"></div>
+    </section>
+  </main>
+
+  <dialog id="dateDialog" class="panel-dialog">
+    <div class="panel-header">
+      <h3 id="panelDateLabel"></h3>
+      <button id="closeDateDialog" class="btn btn-ghost" type="button">Close</button>
+    </div>
+
+    <section>
+      <h4>Tasks</h4>
+      <ul id="taskList" class="entry-list"></ul>
+      <form id="addTaskForm" class="inline-form">
+        <input id="taskTitle" name="title" placeholder="Task title" maxlength="120" required />
+        <textarea id="taskNotes" name="notes" placeholder="Task details" rows="2"></textarea>
+        <button type="submit" class="btn btn-primary">Add Task</button>
+      </form>
+    </section>
+
+    <section>
+      <h4>Journal</h4>
+      <ul id="journalList" class="entry-list"></ul>
+      <form id="addJournalForm" class="inline-form">
+        <textarea id="journalNotes" name="notes" placeholder="Journal notes" rows="3" required></textarea>
+        <button type="submit" class="btn btn-primary">Add Journal</button>
+      </form>
+    </section>
+
+    <section>
+      <h4>Colours</h4>
+      <ul id="colourChipList" class="entry-list"></ul>
+      <form id="addColourForm" class="inline-form">
+        <input id="colourInput" type="color" value="#e75480" />
+        <button type="submit" class="btn btn-primary">Add Colour</button>
+      </form>
+    </section>
+
+  </dialog>
+
+  <dialog id="legendDialog" class="panel-dialog legend-dialog">
+    <div class="panel-header">
+      <h3>Legend</h3>
+      <button id="closeLegendDialog" class="btn btn-ghost" type="button">Close</button>
+    </div>
+
+    <ul id="legendList" class="legend-list"></ul>
+
+    <form id="legendForm" class="inline-form inline-form-row">
+      <div class="colour-selector-btn colour-picker-trigger" aria-label="Pick colour" title="Pick colour">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-palette-fill" viewBox="0 0 16 16">
+          <path d="M12.433 10.07C14.133 10.585 16 11.15 16 8a8 8 0 1 0-8 8c1.996 0 1.826-1.504 1.649-3.08-.124-1.101-.252-2.237.351-2.92.465-.527 1.42-.237 2.433.07M8 5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3m4.5 3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3M5 6.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m.5 6.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3"/>
+        </svg>
+        <input id="legendColour" name="colour" type="color" value="#e75480" class="colour-picker-input" />
+      </div>
+      <input id="legendLabel" name="label" placeholder="Label" maxlength="50" required />
+      <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+  </dialog>
+
+  <script>
+    window.debugLog = [];
+    const debugStatus = document.getElementById("debugStatus");
+
+    window.onerror = function(msg, url, line) {
+      const text = "ERROR: " + msg + " @ " + url + ":" + line;
+      window.debugLog.push(text);
+      if (debugStatus) debugStatus.textContent = text;
+      console.error(text);
+    };
+
+    window.addEventListener("error", function(event) {
+      const text = "EVENT ERROR: " + event.message;
+      window.debugLog.push(text);
+      if (debugStatus) debugStatus.textContent = text;
+      console.error(text);
+    });
+
+    if (debugStatus) debugStatus.textContent = "App module loading...";
+    console.log("Starting app.js import...");
+  </script>
+  <script type="module" src="./js/app.bundle.js?v=20260405y"></script>
+  <script src="./js/pwa.js?v=20260405a" defer></script>
+</html>
