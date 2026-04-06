@@ -97,6 +97,30 @@ function handleEntriesPost(body) {
     }
   }
 
+  if (type === "journal") {
+    var existingJournal = readRowsAsObjects("CalendarEntries").find(function(row) {
+      return toIsoDateValue(getRowField(row, "date")) === body.date
+        && normaliseEntryType(getRowField(row, "type")) === "journal";
+    });
+
+    if (existingJournal) {
+      setRowField(existingJournal, "notes", body.notes ? String(body.notes) : "");
+      setRowField(existingJournal, "title", body.title ? String(body.title) : "");
+      updateRowInSheet("CalendarEntries", existingJournal);
+
+      return ok({
+        id: String(getRowField(existingJournal, "id")),
+        date: toIsoDateValue(getRowField(existingJournal, "date")),
+        type: "journal",
+        title: String(getRowField(existingJournal, "title") || ""),
+        notes: String(getRowField(existingJournal, "notes") || ""),
+        colour: normaliseHexColour(getRowField(existingJournal, "colour")),
+        created_at: String(getRowField(existingJournal, "created_at") || ""),
+        updated: true
+      });
+    }
+  }
+
   var record = {
     id: uuid(),
     date: body.date,

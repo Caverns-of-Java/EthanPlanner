@@ -579,6 +579,17 @@ function normaliseEntry(entry) {
   };
 }
 
+function getPrimaryJournalEntry(entries) {
+  const journals = (entries || []).filter((entry) => entry.type === "journal");
+  if (journals.length === 0) {
+    return null;
+  }
+
+  return journals
+    .slice()
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))[0];
+}
+
 function appendEntryToState(entry) {
   const normalised = normaliseEntry(entry);
   const existing = state.entriesByDate.get(normalised.date) || [];
@@ -597,7 +608,12 @@ function appendEntryToState(entry) {
         })
       : withoutSameId;
 
-  state.entriesByDate.set(normalised.date, [...withoutDuplicateColour, normalised]);
+  const withoutDuplicateJournal =
+    normalised.type === "journal"
+      ? withoutDuplicateColour.filter((item) => item.type !== "journal")
+      : withoutDuplicateColour;
+
+  state.entriesByDate.set(normalised.date, [...withoutDuplicateJournal, normalised]);
   updateIndicatorForDate(normalised.date);
   return normalised;
 }
@@ -883,7 +899,8 @@ function renderEntryList(container, entries, fields) {
 function renderDatePanel(date) {
   const entries = state.entriesByDate.get(date) || [];
   const tasks = entries.filter((entry) => entry.type === "task");
-  const journals = entries.filter((entry) => entry.type === "journal");
+  const journalEntry = getPrimaryJournalEntry(entries);
+  const journals = journalEntry ? [journalEntry] : [];
 
   els.panelDateLabel.textContent = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
     weekday: "long",
@@ -905,6 +922,13 @@ function renderDatePanel(date) {
       { key: "notes", label: "Notes", multiline: true },
     ],
   });
+
+  const journalNotesInput = document.getElementById("journalNotes");
+  if (journalNotesInput) {
+    journalNotesInput.value = journalEntry ? (journalEntry.notes || "") : "";
+    journalNotesInput.dataset.entryId = journalEntry ? (journalEntry.id || "") : "";
+  }
+
   showDialog(els.dateDialog);
 }
 
@@ -1387,13 +1411,29 @@ function bindEvents() {
 
   els.addJournalForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const notes = document.getElementById("journalNotes").value.trim();
+    const journalNotesInput = document.getElementById("journalNotes");
+    const notes = journalNotesInput.value.trim();
     if (!notes) {
       return;
     }
 
-    await addEntry("journal", { notes });
-    els.addJournalForm.reset();
+    const entryId = journalNotesInput.dataset.entryId;
+    if (entryId) {
+      const response = await updateEntry(entryId, { notes });
+      appendEntryToState(response.data || {
+        id: entryId,
+        type: "journal",
+        date: state.selectedDate,
+        notes,
+      });
+      renderDatePanel(state.selectedDate);
+      refreshCalendarDate(state.selectedDate);
+    } else {
+      await addEntry("journal", { notes });
+    }
+
+    journalNotesInput.value = notes;
+    journalNotesInput.dataset.entryId = (getPrimaryJournalEntry(state.entriesByDate.get(state.selectedDate) || []) || {}).id || "";
   });
 
   els.legendForm.addEventListener("submit", async (event) => {

@@ -389,6 +389,17 @@ function normaliseEntry(entry) {
   };
 }
 
+function getPrimaryJournalEntry(entries) {
+  const journals = (entries || []).filter((entry) => entry.type === "journal");
+  if (journals.length === 0) {
+    return null;
+  }
+
+  return journals
+    .slice()
+    .sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))[0];
+}
+
 function appendEntryToState(entry) {
   const normalised = normaliseEntry(entry);
   const existing = state.entriesByDate.get(normalised.date) || [];
@@ -407,7 +418,12 @@ function appendEntryToState(entry) {
         })
       : withoutSameId;
 
-  state.entriesByDate.set(normalised.date, [...withoutDuplicateColour, normalised]);
+  const withoutDuplicateJournal =
+    normalised.type === "journal"
+      ? withoutDuplicateColour.filter((item) => item.type !== "journal")
+      : withoutDuplicateColour;
+
+  state.entriesByDate.set(normalised.date, [...withoutDuplicateJournal, normalised]);
   updateIndicatorForDate(normalised.date);
   return normalised;
 }
@@ -631,7 +647,8 @@ function renderColours(entries) {
 function renderDatePanel(date) {
   const entries = state.entriesByDate.get(date) || [];
   const tasks = entries.filter((entry) => entry.type === "task");
-  const journals = entries.filter((entry) => entry.type === "journal");
+  const journalEntry = getPrimaryJournalEntry(entries);
+  const journals = journalEntry ? [journalEntry] : [];
   const colours = entries.filter((entry) => entry.type === "colour");
 
   els.panelDateLabel.textContent = new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
@@ -644,6 +661,14 @@ function renderDatePanel(date) {
   renderEntryList(els.taskList, tasks, (entry) => `${entry.title || "Task"}: ${entry.notes || ""}`);
   renderEntryList(els.journalList, journals, (entry) => entry.notes || "(No text)");
   renderColours(colours);
+
+  const journalNotesInput = document.getElementById("journalNotes");
+  if (journalNotesInput) {
+    journalNotesInput.value = journalEntry ? (journalEntry.notes || "") : "";
+    journalNotesInput.dataset.entryId = journalEntry ? (journalEntry.id || "") : "";
+  }
+  els.addJournalForm.dataset.editing = journalEntry ? "true" : "false";
+
   showDialog(els.dateDialog);
 }
 
@@ -972,19 +997,30 @@ function bindEvents() {
 
   els.addJournalForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const notes = document.getElementById("journalNotes").value.trim();
+    const journalNotesInput = document.getElementById("journalNotes");
+    const notes = journalNotesInput.value.trim();
     if (!notes) {
       return;
     }
 
-    if (els.addJournalForm.dataset.editing === "true") {
-      const entryId = document.getElementById("journalNotes").dataset.entryId;
-      await updateEntry(entryId, { notes });
-      els.addJournalForm.dataset.editing = "false";
+    const entryId = journalNotesInput.dataset.entryId;
+    if (entryId) {
+      const response = await updateEntry(entryId, { notes });
+      appendEntryToState(response.data || {
+        id: entryId,
+        type: "journal",
+        date: state.selectedDate,
+        notes,
+      });
     } else {
       await addEntry("journal", { notes });
     }
-    els.addJournalForm.reset();
+
+    journalNotesInput.value = notes;
+    journalNotesInput.dataset.entryId = (getPrimaryJournalEntry(state.entriesByDate.get(state.selectedDate) || []) || {}).id || "";
+    els.addJournalForm.dataset.editing = journalNotesInput.dataset.entryId ? "true" : "false";
+    renderDatePanel(state.selectedDate);
+    refreshCalendarDate(state.selectedDate);
   });
 
   els.addColourForm.addEventListener("submit", async (event) => {

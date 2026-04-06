@@ -41,6 +41,10 @@ body {
   gap: 0.55rem;
 }
 
+.install-prompt[hidden] {
+  display: none;
+}
+
 .install-prompt p {
   margin: 0;
   font-size: 0.9rem;
