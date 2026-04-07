@@ -1,12 +1,12 @@
 # Architecture
 
-## Frontend
+## Web App (docs)
 
-- index.html: layout for calendar, date panel, and legend editor
-- css/styles.css: visual system, pink-green palette, responsive behavior
-- js/calendar.js: Monday-first month generation and grid rendering
-- js/api.js: endpoint wrapper for entries and legend APIs
-- js/app.js: app state, panel interactions, drag highlighting, legend UI
+- docs/index.html: layout for calendar, date panel, and legend editor
+- docs/css/styles.css: visual system, pink-green palette, responsive behavior
+- docs/js/calendar.js: Monday-first month generation and grid rendering
+- docs/js/api.js: endpoint wrapper for entries and legend APIs
+- docs/js/app.js: app state, panel interactions, drag highlighting, legend UI
 
 ## Backend
 
@@ -19,4 +19,4 @@
 
 1. User interaction triggers API call.
 2. Backend writes or reads Google Sheet rows.
-3. Frontend updates local date cache and rerenders calendar indicators.
+3. Web app updates local date cache and rerenders calendar indicators.

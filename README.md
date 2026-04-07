@@ -13,18 +13,17 @@ EthanPlanner is a static planning app designed for GitHub Pages with a Google Ap
 
 ## Workspace structure
 
-- frontend: static app for GitHub Pages
+- docs: static app for GitHub Pages (single source for web UI)
 - backend: Apps Script source files and clasp config
 - sheets: Google Sheets setup docs
-- docs: deployment and architecture notes
 
 ## Quick start
 
 1. Set up your Google Sheet using sheets/SHEET_SETUP.md.
 2. Create Apps Script project bound to that sheet and copy backend/src files.
 3. Deploy Apps Script web app and copy the /exec URL.
-4. Set API base URL in frontend/js/config.js.
-5. Serve frontend locally with any static server and verify.
+4. Set API base URL in docs/js/config.js.
+5. Serve docs locally with any static server and verify.
 
 ## Notes
 

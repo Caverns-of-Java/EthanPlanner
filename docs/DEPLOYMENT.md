@@ -16,13 +16,13 @@ Optional local workflow with clasp:
 2. In backend/.clasp.json set scriptId.
 3. Run clasp push from backend folder.
 
-## Frontend (GitHub Pages)
+## Web App (GitHub Pages from docs)
 
-1. Put frontend contents in your GitHub repo.
-2. In frontend/js/config.js set API_BASE_URL to deployed Apps Script /exec URL.
+1. Keep the static web app in the docs folder.
+2. In docs/js/config.js set API_BASE_URL to deployed Apps Script /exec URL.
 3. Commit and push to main branch.
 4. Enable GitHub Pages in repo settings.
-5. Set source to main branch and frontend folder if using folder deploy.
+5. Set source to GitHub Actions (workflow deploys docs folder).
 
 ## Verification
 
